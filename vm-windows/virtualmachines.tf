@@ -17,17 +17,6 @@ resource "azurerm_network_interface" "appinterface" {
   ]
 }
 
-resource "azurerm_public_ip" "appip" {
-  count                   = var.number_of_machines
-  name                    = "app-ip${count.index}"
-  location                = local.location
-  resource_group_name     = local.resource_group_name
-  allocation_method       = "Static"
-  depends_on = [
-    azurerm_resource_group.appgrp
-  ]
-}
-
 resource "azurerm_windows_virtual_machine" "appvm" {
   count               = var.number_of_machines
   name                = "appvm${count.index}"

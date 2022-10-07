@@ -26,13 +26,13 @@ resource "azurerm_network_security_group" "appnsg" {
   resource_group_name = local.resource_group_name
 
   security_rule {
-    name                       = "AllowSSH"
+    name                       = "AllowRDP"
     priority                   = 300
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "22"
+    destination_port_range     = "3389"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }

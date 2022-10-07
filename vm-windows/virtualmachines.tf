@@ -23,39 +23,23 @@ resource "azurerm_public_ip" "appip" {
   location                = local.location
   resource_group_name     = local.resource_group_name
   allocation_method       = "Static"
-  zones = ["${count.index+1}"]
   depends_on = [
     azurerm_resource_group.appgrp
   ]
 }
 
-resource "tls_private_key" "linuxkey" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-resource "local_file" "linuxpemkey" {
-    content  = tls_private_key.linuxkey.private_key_pem
-    filename = "linuxkey.pem"
-}
-
-resource "azurerm_linux_virtual_machine" "linuxvm" {
+resource "azurerm_windows_virtual_machine" "appvm" {
   count               = var.number_of_machines
-  name                = "linuxvm${count.index}"
+  name                = "appvm${count.index}"
   resource_group_name = local.resource_group_name
   location            = local.location
   size                = "Standard_D2S_v3"
-  admin_username      = "linuxuser"
-  zone                = (count.index + 1)
+  admin_username      = "adminuser"
+  admin_password      = azurerm_key_vault_secret.vmpassword.value
   
   network_interface_ids = [
     azurerm_network_interface.appinterface[count.index].id,
   ]
-
-  admin_ssh_key {
-    username = "linuxuser"
-    public_key = tls_private_key.linuxkey.public_key_openssh
-  }
 
   os_disk {
     caching              = "ReadWrite"
@@ -63,14 +47,13 @@ resource "azurerm_linux_virtual_machine" "linuxvm" {
   }
 
   source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-focal"
-    sku       = "20_04-lts"
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2016-Datacenter"
     version   = "latest"
   }
   depends_on = [
     azurerm_network_interface.appinterface,
-    azurerm_resource_group.appgrp,
-    tls_private_key.linuxkey
+    azurerm_resource_group.appgrp
   ]
 }

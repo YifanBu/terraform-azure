@@ -1,42 +1,15 @@
-resource "azurerm_network_interface" "appinterface" {
-  count               = var.number_of_machines
-  name                = "appinterface${count.index}"
-  location            = local.location
-  resource_group_name = local.resource_group_name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnets[count.index].id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id = azurerm_public_ip.appip[count.index].id
-  }
-
-  depends_on = [
-    azurerm_subnet.subnets,
-    azurerm_public_ip.appip
-  ]
-}
-
-resource "azurerm_public_ip" "appip" {
-  count                   = var.number_of_machines
-  name                    = "app-ip${count.index}"
-  location                = local.location
-  resource_group_name     = local.resource_group_name
-  allocation_method       = "Static"
-  zones = ["${count.index+1}"]
-  depends_on = [
-    azurerm_resource_group.appgrp
-  ]
-}
-
 resource "tls_private_key" "linuxkey" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "local_file" "linuxpemkey" {
-    content  = tls_private_key.linuxkey.private_key_pem
-    filename = "linuxkey.pem"
+  content  = tls_private_key.linuxkey.private_key_pem
+  filename = "linuxkey.pem"
+}
+
+data "template_file" "cloudinitdata" {
+  template = file("script.sh")
 }
 
 resource "azurerm_linux_virtual_machine" "linuxvm" {
@@ -46,8 +19,7 @@ resource "azurerm_linux_virtual_machine" "linuxvm" {
   location            = local.location
   size                = "Standard_D2S_v3"
   admin_username      = "linuxuser"
-  zone                = (count.index + 1)
-  
+  custom_data = base64encode(data.template_file.cloudinitdata.rendered)
   network_interface_ids = [
     azurerm_network_interface.appinterface[count.index].id,
   ]

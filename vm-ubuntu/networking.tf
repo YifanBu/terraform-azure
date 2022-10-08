@@ -20,6 +20,38 @@ resource "azurerm_subnet" "subnets" {
   ]
 }
 
+resource "azurerm_network_interface" "appinterface" {
+  count               = var.number_of_machines
+  name                = "appinterface${count.index}"
+  location            = local.location
+  resource_group_name = local.resource_group_name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnets[count.index].id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id = azurerm_public_ip.appip[count.index].id
+  }
+
+  depends_on = [
+    azurerm_subnet.subnets,
+    azurerm_public_ip.appip
+  ]
+}
+
+resource "azurerm_public_ip" "appip" {
+  count                   = var.number_of_machines
+  name                    = "app-ip${count.index}"
+  location                = local.location
+  resource_group_name     = local.resource_group_name
+  allocation_method       = "Static"
+  sku                     = "Standard"
+  depends_on = [
+    azurerm_resource_group.appgrp
+  ]
+}
+
+
 resource "azurerm_network_security_group" "appnsg" {
   name                = "app-nsg"
   location            = local.location
@@ -36,6 +68,18 @@ resource "azurerm_network_security_group" "appnsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
+  security_rule {
+    name                       = "AllowHTTP"
+    priority                   = 400
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }  
 
   depends_on = [
     azurerm_resource_group.appgrp
